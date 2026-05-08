@@ -12,7 +12,9 @@ import numpy as np
 st.set_page_config(page_title="Sepsis Global Attribute Atlas", layout="wide")
 
 # --- PATH CONFIG ---
-TEXT_DIR = os.path.join(os.getcwd(), "data/parsed_papers/")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+TEXT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "data", "parsed_papers"))
+# TEXT_DIR = os.path.join(os.getcwd(), "../data/parsed_papers/")
 
 # --- ATTRIBUTE DISCOVERY LOGIC ---
 DOMAIN_MAP = {

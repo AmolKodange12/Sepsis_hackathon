@@ -28,7 +28,7 @@ The system has two Streamlit frontends:
 
 - **`apps/ingest_app.py`** — parse papers, manage Weaviate ingestion, query via chat
 - **`apps/dashboard.py`** — attribute analytics and full-text traceability across all papers
-- **`dashboard_viewer_graph.py`** - SEPSIS ATLAS DASHBOARD and viewer 
+- **`dashboard_viewer_graph.py`** - SEPSIS ATLAS DASHBOARD and viewer.
 
 ---
 
@@ -123,7 +123,11 @@ The system has two Streamlit frontends:
 │  └─ Chat tab        → hybrid RAG query interface                        │
 │                                                                         │
 │  apps/dashboard.py                                                      │
-│  └─ Attribute analytics, traceability search, paper browser            │
+│  └─ Attribute analytics, traceability search, paper browser
+│  
+│  apps/dashboard_viewer_graph.py
+│  └─ Attribute analytics, traceability search, paper browser             │
+│                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
