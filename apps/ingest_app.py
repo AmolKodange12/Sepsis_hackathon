@@ -253,7 +253,7 @@ def _init_state():
 
 # ─────────────────────────────────────────────────────────────────────────────
 
-st.set_page_config(page_title="Sepsis Atlas", layout="wide")
+st.set_page_config(page_title="SepSys Atlas", layout="wide")
 _init_state()
 
 st.markdown("""
@@ -289,7 +289,7 @@ button[data-testid="stTab"][aria-selected="true"] {
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🩺 Sepsis Atlas")
+st.title("🩺 SepSys Atlas")
 if not weaviate_available:
     st.caption(
         "⚠️ Weaviate not reachable — Documents ingestion and Chat disabled. "

@@ -255,6 +255,11 @@ Sepsis_hackathon/
 │   ├── ingest_app.py              ← Main app (Ingest + Documents + Chat)
 │   └── dashboard.py               ← Attribute analytics dashboard
 │
+│
+├── frontend/
+│   └── dashboard_viewer_graph.py  ← Attribute analytics dashboard
+│
+│
 ├── docker-compose.yml             ← Weaviate container
 ├── requirements.txt               ← All dependencies
 ├── README.md

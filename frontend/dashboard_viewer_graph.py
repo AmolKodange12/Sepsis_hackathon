@@ -9,7 +9,7 @@ import networkx as nx
 import re
 import numpy as np
 
-st.set_page_config(page_title="Sepsis Global Attribute Atlas", layout="wide")
+st.set_page_config(page_title="SepSys Global Attribute Atlas", layout="wide")
 
 # --- PATH CONFIG ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
