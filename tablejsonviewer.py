@@ -8,7 +8,8 @@ st.set_page_config(page_title="Sepsis Evidence Explorer", layout="wide")
 
 # --- PATH CONFIG ---
 # Directory where your table-heavy JSON files are stored
-TABLES_DIR = os.path.join(os.getcwd(), "./data/parsed_papers/")
+# TABLES_DIR = os.path.join(os.getcwd(), "./data/parsed_papers/")
+TABLES_DIR = os.path.join(os.getcwd(), "data/mortality_counterfactuals")
 
 def parse_markdown_table(md_string):
     """Parses markdown table and handles duplicate column names."""

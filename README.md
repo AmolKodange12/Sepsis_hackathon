@@ -112,6 +112,12 @@ List of table objects. Overwritten when you rotate a table in the UI.
 ]
 ```
 
+### Use Case 1: Mortality Counterfactuals
+
+`schemas_usecase.py` and `extract_usecase.py` to extract the jsons and store them under `data/mortality_counterfactuals`
+
+`visualize_usecase.py` to streamlit visualize the jsons with traceability.
+
 ## Known Limitations
 
 - Docling does not handle rotated tables automatically — use the `↕` button in the viewer
