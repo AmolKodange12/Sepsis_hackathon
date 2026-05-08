@@ -15,13 +15,14 @@ def ensure_collection(client):
     client.collections.create(
         name=COLLECTION_NAME,
         properties=[
-            Property(name="chunkId", data_type=DataType.TEXT),
-            Property(name="title", data_type=DataType.TEXT),
-            Property(name="chunkIndex", data_type=DataType.INT),
-            Property(name="chapterIndex", data_type=DataType.INT),
-            Property(name="compressedContent", data_type=DataType.TEXT),
-            Property(name="shortSummary", data_type=DataType.TEXT),
-            Property(name="fullSummary", data_type=DataType.TEXT),
+            Property(name="chunkId",            data_type=DataType.TEXT),
+            Property(name="title",              data_type=DataType.TEXT),
+            Property(name="chunkIndex",         data_type=DataType.INT),
+            Property(name="chapterIndex",       data_type=DataType.INT),
+            Property(name="compressedContent",  data_type=DataType.TEXT),
+            Property(name="shortSummary",       data_type=DataType.TEXT),
+            Property(name="fullSummary",        data_type=DataType.TEXT),
+            Property(name="pageNumber",         data_type=DataType.INT),  # ← ADD THIS
         ],
         vector_config=Configure.Vectors.self_provided(),
     )
@@ -48,10 +49,11 @@ def ingest(chunks_path: str):
                     uuid=generate_uuid5(chunk["id"]),
                     properties={
                         "chunkId": chunk["id"],
-                        "title": meta.get("section", ""),
-                        "chunkIndex": meta.get("section_index", 0),
+                        "title": meta.get("section", meta.get("title", "")),  # both formats
+                        "chunkIndex": meta.get("section_index", meta.get("part_index", 0)),
                         "chapterIndex": meta.get("part_index", 0),
                         "compressedContent": chunk["text"],
+                        "pageNumber": meta.get("page_number", 0),  # only in new format
                         "shortSummary": "",
                         "fullSummary": "",
                     },

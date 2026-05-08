@@ -1,5 +1,5 @@
 """
-ingest_viewer.py  —  run with: streamlit run ingest_viewer.py
+test_ingest.py  —  run with: streamlit run ingest_viewer.py
 
 Storage layout (written automatically):
   data/parsed_papers/{paper_id}.md          ← sections text only, no tables
@@ -15,8 +15,15 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-from ingest import parse_pdf, ParsedPaper, ParsedTable, PARSED_CACHE_DIR
+from ingest import (
+    parse_pdf,
+    ParsedPaper,
+    ParsedTable,
+    ParsedFigure,
+    PARSED_CACHE_DIR,
+)
 from ingest_parallel import parse_all_parallel
+from chunking_strategy import build_chunks_from_paper
 
 
 # ── Markdown table utils ──────────────────────────────────────────────────────
@@ -132,17 +139,24 @@ def write_tables_json(paper: ParsedPaper) -> Path:
 
 
 def rotate_and_save(paper: ParsedPaper, table_idx: int, mode: str) -> ParsedPaper:
-    """
-    Apply rotation to table in-memory, overwrite _tables.json, return updated paper.
-    Does NOT touch the main .json (docling cache).
-    """
     paper = copy.deepcopy(paper)
     t = paper.tables[table_idx]
     rows = apply_mode(t.markdown, mode)
     t.markdown = _rows_to_markdown(rows)
     write_tables_json(paper)
+    write_chunks_json(paper) # <--- ADD THIS to keep chunks in sync with rotations
     return paper
 
+def write_chunks_json(paper: ParsedPaper) -> Path:
+    """Generate chunks from paper and write to {paper_id}_chunks.json."""
+    path = PARSED_CACHE_DIR / f"{paper.paper_id}_chunks.json"
+    
+    # You can adjust max_chars here (e.g., 1500 or 1800)
+    chunks = build_chunks_from_paper(paper, max_chars=1500)
+    
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(chunks, f, indent=2, ensure_ascii=False)
+    return path
 
 # ── Streamlit UI ──────────────────────────────────────────────────────────────
 
@@ -164,6 +178,7 @@ if st.button("Parse / Load", type="primary"):
         paper = parse_pdf(selected)
         write_sections_md(paper)
         write_tables_json(paper)
+        write_chunks_json(paper)  # <--- ADD THIS
         st.session_state["paper"] = paper
         st.session_state["table_mode"] = {}
 
@@ -216,10 +231,11 @@ if paper is None:
 if "table_mode" not in st.session_state:
     st.session_state["table_mode"] = {}
 
-c1, c2, c3 = st.columns(3)
+c1, c2, c3, c4 = st.columns(4)
 c1.metric("Paper ID", paper.paper_id[:40] + "…" if len(paper.paper_id) > 40 else paper.paper_id)
 c2.metric("Sections", len(paper.sections))
-c3.metric("Tables", len(paper.tables))
+c3.metric("Tables", len(paper.tables))  
+c4.metric("Figures", len(paper.figures))
 
 md_path = PARSED_CACHE_DIR / f"{paper.paper_id}.md"
 tbl_path = PARSED_CACHE_DIR / f"{paper.paper_id}_tables.json"
@@ -229,7 +245,9 @@ st.divider()
 
 _CYCLE = ["original", "down", "up"]
 
-tab_sections, tab_tables, tab_raw = st.tabs(["Sections", "Tables", "Full Markdown"])
+tab_sections, tab_tables, tab_figures, tab_chunks, tab_raw = st.tabs(
+    ["Sections", "Tables", "Figures","Chunks", "Full Markdown"]
+)
 
 with tab_sections:
     if not paper.sections:
@@ -274,6 +292,34 @@ with tab_tables:
             rows = apply_mode(t.markdown, mode)
             st.dataframe(_rows_to_df(rows), use_container_width=True)
 
+with tab_figures:
+    if not getattr(paper, "figures", []):
+        st.warning("No figures parsed.")
+
+    for fig in paper.figures:
+        label = f"Figure {fig.index} · p.{fig.page_start}"
+
+        with st.expander(label):
+            if fig.caption:
+                st.caption(fig.caption)
+
+            if fig.image_path and Path(fig.image_path).exists():
+                st.image(fig.image_path, use_container_width=True)
+                st.code(fig.image_path)
+            else:
+                st.error(f"Missing image: {fig.image_path}")
+with tab_chunks:
+    if st.button("Generate Chunks for Testing"):
+        
+        chunks = build_chunks_from_paper(paper, max_chars=500)
+        
+        st.write(f"Generated {len(chunks)} chunks.")
+        
+        for c in chunks:
+            with st.expander(f"📄 Page {c['metadata']['page_number']} | {c['metadata']['section']}"):
+                st.json(c["metadata"])
+                st.markdown(c["text"])
+                
 with tab_raw:
     st.text_area(
         "full_markdown",

@@ -6,14 +6,20 @@ from config import get_client, COLLECTION_NAME
 from embedder import Embedder
 from reranker import Reranker
 
-_PROPS = ["chunkId", "title", "chunkIndex", "compressedContent"]
+_PROPS = ["chunkId", "title", "chunkIndex", "chapterIndex", "compressedContent", "pageNumber", "shortSummary", "fullSummary"]
 
 
 def _to_record(obj) -> dict:
+    p = obj.properties
     return {
-        "compressedContent": obj.properties["compressedContent"],
-        "title": obj.properties["title"],
-        "chunkIndex": obj.properties["chunkIndex"],
+        "compressedContent": p["compressedContent"],
+        "title": p.get("title", ""),
+        "chunkIndex": p.get("chunkIndex", 0),
+        "chapterIndex": p.get("chapterIndex", 0),
+        "page_number": p.get("pageNumber", 0),
+        "shortSummary": p.get("shortSummary", ""),
+        "fullSummary": p.get("fullSummary", ""),
+        "chunkId": p.get("chunkId", ""),
         "_id": str(obj.uuid),
         "_score": obj.metadata.score if obj.metadata else None,
     }
@@ -76,7 +82,7 @@ def retrieve(
     for i, chunk in enumerate(results, 1):
         rerank_score = chunk.get("_rerank_score")
         score_str = f", rerank_score={rerank_score:.4f}" if rerank_score is not None else ""
-        print(f"[{i}] {chunk['title']} (chunkIndex={chunk['chunkIndex']}{score_str})")
+        print(f"[{i}] {chunk['title']} (chunkIndex={chunk['chunkIndex']}, page={chunk['page_number']}, rerank_score=...)")
         print(f"    content: {chunk['compressedContent'][:200]}...")
         print()
 

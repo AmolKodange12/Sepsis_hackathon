@@ -13,7 +13,7 @@ from pathlib import Path
 # Add rag_python to path if running from repo root
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from retrieve import retrieve as _retrieve_print  # noqa: F401 — keep for reference
-
+from openai import OpenAI
 from config import get_client, COLLECTION_NAME
 from embedder import Embedder
 from reranker import Reranker
@@ -21,14 +21,16 @@ from weaviate.classes.query import MetadataQuery
 
 # ── Weaviate retrieval (returns list[dict], no print) ─────────────────────────
 
-_PROPS = ["chunkId", "title", "chunkIndex", "compressedContent"]
+_PROPS = ["chunkId", "title", "chunkIndex", "compressedContent", "pageNumber"]
 
 
 def _to_record(obj) -> dict:
+    p = obj.properties
     return {
-        "compressedContent": obj.properties["compressedContent"],
-        "title": obj.properties["title"],
-        "chunkIndex": obj.properties["chunkIndex"],
+        "compressedContent": p["compressedContent"],
+        "title": p.get("title", ""),
+        "chunkIndex": p.get("chunkIndex", 0),
+        "page_number": p.get("pageNumber", 0),  # ← add this
         "_id": str(obj.uuid),
         "_score": obj.metadata.score if obj.metadata else None,
     }
@@ -95,6 +97,7 @@ Each record must follow this schema:
   "performance": "<sensitivity, specificity, p-value, AUC if available>",
   "notes": "<any important caveats or adjustments>",
   "source_anchor": "<exact short quote from source text that supports this record, ≤30 words>"
+  "page": "<page number from source chunk header>"
 }
 
 Rules:
@@ -102,6 +105,8 @@ Rules:
 - Use "not reported" for fields absent from the text.
 - source_anchor must be a verbatim short excerpt (≤30 words) from the chunk.
 - Return a JSON array of records. No preamble, no markdown fences, just the raw JSON array.
+- If a chunk cites another study's results, set "study" to that cited author/year, NOT the source chunk's paper.
+- Never report the same predictor+outcome+effect_size combination twice.
 - If no relevant data found, return empty array: []
 """
 
@@ -110,7 +115,7 @@ def build_user_prompt(query: str, chunks: list[dict]) -> str:
     context_parts = []
     for i, chunk in enumerate(chunks, 1):
         context_parts.append(
-            f"[CHUNK {i} | source: {chunk['title']} | chunkIndex: {chunk['chunkIndex']}]\n"
+            f"[CHUNK {i} | source: {chunk['title']} | page: {chunk['page_number']} | chunkIndex: {chunk['chunkIndex']}]\n"
             f"{chunk['compressedContent']}\n"
         )
     context = "\n---\n".join(context_parts)
@@ -126,34 +131,35 @@ def build_user_prompt(query: str, chunks: list[dict]) -> str:
 import requests
 
 def extract_records(query: str, chunks: list[dict]) -> list[dict]:
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": "gpt-4.1-mini",
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": build_user_prompt(query, chunks)},
-            ],
-            "temperature": 0,
-            "max_tokens": 4096,
-        },
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is not set.")
+
+    client = OpenAI(api_key=api_key)
+    completion = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": build_user_prompt(query, chunks)},
+        ],
+        temperature=0,
+        max_tokens=4096,
     )
 
-    print(response.status_code)
-    print(response.text)
+    raw = (completion.choices[0].message.content or "").strip()
 
-    response.raise_for_status()
-
-    raw = response.json()["choices"][0]["message"]["content"].strip()
-
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
+# REPLACE the fence-stripping block with:
+    if "```" in raw:
+        parts = raw.split("```")
+        # find the json part
+        for part in parts:
+            part = part.strip()
+            if part.startswith("json"):
+                raw = part[4:].strip()
+                break
+            elif part.startswith("[") or part.startswith("{"):
+                raw = part
+            break
 
     try:
         return json.loads(raw)

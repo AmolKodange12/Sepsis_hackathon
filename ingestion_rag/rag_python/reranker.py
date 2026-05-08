@@ -7,7 +7,7 @@ class Reranker:
 
     def _get_model(self) -> CrossEncoder:
         if self._model is None:
-            self._model = CrossEncoder(RERANKER_MODEL_NAME)
+            self._model = CrossEncoder(RERANKER_MODEL_NAME, device="cpu")
         return self._model
 
     def rerank(self, query: str, chunks: list[dict], top_k: int) -> list[dict]:

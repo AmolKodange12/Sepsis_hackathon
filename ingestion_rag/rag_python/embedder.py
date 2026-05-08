@@ -7,7 +7,7 @@ class Embedder:
 
     def _get_model(self) -> SentenceTransformer:
         if self._model is None:
-            self._model = SentenceTransformer(BGE_MODEL_NAME)
+            self._model = SentenceTransformer(BGE_MODEL_NAME, device="cpu")
         return self._model
 
     def embed(self, text: str) -> list[float]:
